@@ -10,6 +10,16 @@ import (
 	"unicode"
 )
 
+type matches struct {
+	firstMatch numberMatch
+	lastMatch  numberMatch
+}
+
+type numberMatch struct {
+	value string
+	index int
+}
+
 func main() {
 	file, err := os.Open("./day1/input.txt")
 
@@ -29,29 +39,37 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Println(total)
-
 	file.Close()
+	log.Println(total)
 }
 
 func findCalibrationNumber(line string) int {
-	wordMatches := findWords(line)
+	wordMatches := findNumberWords(line)
 	numberMatches := findNumbers(line)
 
+	if wordMatches == nil && numberMatches == nil {
+		return 0
+	}
+
+	var firstMatch numberMatch
+	var lastMatch numberMatch
+
 	if wordMatches == nil {
-		wordMatches = numberMatches
-	}
+		firstMatch = numberMatches.firstMatch
+		lastMatch = numberMatches.lastMatch
+	} else if numberMatches == nil {
+		firstMatch = wordMatches.firstMatch
+		lastMatch = wordMatches.lastMatch
+	} else {
+		firstMatch = wordMatches.firstMatch
+		lastMatch = wordMatches.lastMatch
 
-	firstMatch := wordMatches[0]
-
-	if numberMatches[0].index < firstMatch.index {
-		firstMatch = numberMatches[0]
-	}
-
-	lastMatch := wordMatches[len(wordMatches)-1]
-
-	if numberMatches[len(numberMatches)-1].index > lastMatch.index {
-		lastMatch = numberMatches[len(numberMatches)-1]
+		if numberMatches.firstMatch.index < firstMatch.index {
+			firstMatch = numberMatches.firstMatch
+		}
+		if numberMatches.lastMatch.index > lastMatch.index {
+			lastMatch = numberMatches.lastMatch
+		}
 	}
 
 	number, err := strconv.Atoi(firstMatch.value + lastMatch.value)
@@ -60,49 +78,62 @@ func findCalibrationNumber(line string) int {
 		log.Fatal(err)
 	}
 
-	fmt.Println(line)
-	fmt.Println(number)
-
 	return number
 }
 
-type digitMatch struct {
-	value string
-	index int
-}
+func findNumberWords(line string) *matches {
+	regexString := getNumberRegex()
+	regex := regexp.MustCompile(regexString)
+	regexMatch := regex.FindString(line)
+	regexMatchIndex := regex.FindStringIndex(line)
 
-func findWords(line string) []digitMatch {
-	regexMatches := numberRegex.FindAllString(line, -1)
-
-	if regexMatches == nil {
+	if regexMatch == "" {
 		return nil
 	}
 
-	regexMatchIndexes := numberRegex.FindAllStringIndex(line, -1)
-	lastMatchIndex := len(regexMatches) - 1
+	firstMatch := numberMatch{
+		index: regexMatchIndex[0],
+		value: convertNumberWordToInt(regexMatch),
+	}
 
-	return []digitMatch{
-		{index: regexMatchIndexes[0][0], value: convertNumberWordToInt(regexMatches[0])},
-		{index: regexMatchIndexes[lastMatchIndex][1] - 1, value: convertNumberWordToInt(regexMatches[lastMatchIndex])},
+	regex = regexp.MustCompile(reverseString(regexString))
+	reversedLine := reverseString(line)
+	regexMatch = regex.FindString(reversedLine)
+	regexMatchIndex = regex.FindStringIndex(reversedLine)
+
+	lastMatch := numberMatch{
+		index: len(line) - regexMatchIndex[1],
+		value: convertNumberWordToInt(reverseString(regexMatch)),
+	}
+
+	return &matches{
+		firstMatch: firstMatch,
+		lastMatch:  lastMatch,
 	}
 }
 
-func findNumbers(line string) []digitMatch {
-	matches := []digitMatch{}
+func findNumbers(line string) *matches {
+	numberMatches := []numberMatch{}
 
 	for i, c := range line {
 		if unicode.IsDigit(c) {
-			matches = append(matches, digitMatch{value: string(c), index: i})
+			numberMatches = append(numberMatches, numberMatch{value: string(c), index: i})
 		}
 	}
 
-	return matches
+	if len(numberMatches) == 0 {
+		return nil
+	}
+
+	return &matches{
+		firstMatch: numberMatches[0],
+		lastMatch:  numberMatches[len(numberMatches)-1],
+	}
 }
 
 var numberWords = []string{"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"}
-var numberRegex = getNumberRegex()
 
-func getNumberRegex() *regexp.Regexp {
+func getNumberRegex() string {
 	regex := ""
 
 	for i, word := range numberWords {
@@ -113,7 +144,7 @@ func getNumberRegex() *regexp.Regexp {
 		regex += word
 	}
 
-	return regexp.MustCompile(regex)
+	return regex
 }
 
 func convertNumberWordToInt(word string) string {
@@ -123,5 +154,14 @@ func convertNumberWordToInt(word string) string {
 		}
 	}
 
-	return ""
+	panic("failed to convert number to word")
+}
+
+func reverseString(s string) string {
+	runes := []rune(s)
+
+	for index, reverseIndex := 0, len(runes)-1; index < reverseIndex; index, reverseIndex = index+1, reverseIndex-1 {
+		runes[index], runes[reverseIndex] = runes[reverseIndex], runes[index]
+	}
+	return string(runes)
 }
