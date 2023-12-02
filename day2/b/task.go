@@ -20,7 +20,7 @@ func main() {
 
 	for scanner.Scan() {
 		text := scanner.Text()
-		total += parseLine(text)
+		total += getGamePower(text)
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -31,14 +31,9 @@ func main() {
 	log.Println(total)
 }
 
-func parseLine(line string) int {
-	_, results, _ := strings.Cut(line, ": ")
-	power := getGamePower(strings.Split(results, "; "))
-
-	return power
-}
-
-func getGamePower(results []string) int {
+func getGamePower(line string) int {
+	_, allResults, _ := strings.Cut(line, ": ")
+	results := strings.Split(allResults, "; ")
 	var minAmountMap = map[string]int{
 		"red":   1,
 		"green": 1,

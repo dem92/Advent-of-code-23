@@ -20,11 +20,7 @@ func main() {
 
 	for scanner.Scan() {
 		text := scanner.Text()
-		id, possible := parseLine(text)
-
-		if possible {
-			total += id
-		}
+		total += getIdValue(text)
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -35,12 +31,12 @@ func main() {
 	log.Println(total)
 }
 
-func parseLine(line string) (int, bool) {
+func getIdValue(line string) int {
 	prefix, results, _ := strings.Cut(line, ": ")
 	isGameValid := validateGame(strings.Split(results, "; "))
 
 	if !isGameValid {
-		return 0, false
+		return 0
 	}
 
 	idString := strings.Split(prefix, " ")[1]
@@ -50,7 +46,7 @@ func parseLine(line string) (int, bool) {
 		log.Fatal(err)
 	}
 
-	return gameId, true
+	return gameId
 }
 
 func validateGame(results []string) bool {
