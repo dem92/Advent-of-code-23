@@ -2,19 +2,15 @@ package main
 
 import (
 	"bufio"
-	// "// fmt"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 )
 
-// var numberRegex = regexp.MustCompile("[0-9]+")
-
 func main() {
 	file, err := os.Open("./day5/input.txt")
 	// file, err := os.Open("./day5/example.txt")
-	// file, err := os.Open("../example.txt")
 
 	if err != nil {
 		log.Fatal(err)
@@ -31,7 +27,10 @@ func main() {
 	log.Println(closestLocation)
 }
 
+// Default value is higher than any location number in the input
 var closestLocation = 1000000000000000000
+var seeds = [][]int{}
+var maps = [][][]int{}
 
 func getClosestLocation(scanner *bufio.Scanner) {
 	parseSeeds(scanner)
@@ -45,17 +44,14 @@ func getClosestLocation(scanner *bufio.Scanner) {
 	}
 }
 
+// Check for the range in each row of the map with the given index
 func checkBranch(numberRange []int, mapIndex int) {
-	// fmt.Println()
-	// fmt.Printf("Branch #: %d\n", numberRange)
-	// fmt.Printf("MapIndex #: %d\n", mapIndex)
-	// baseNumber := numberRange[0]
-	// ceilingNumber := baseNumber + numberRange[1]
-	// fmt.Printf("Base num #: %d, Ceiling num #: %d\n", baseNumber, ceilingNumber)
-
 	if mapIndex == len(maps) {
+		// We've reached past the last map,
+		// which means that the numbers in the range are location numbers.
+		// Compare the lowest location number to the closest location
+		// we've found so far.
 		lowestNumber := numberRange[0]
-		// fmt.Printf("End of the line, lowest number is: %d\n", lowestNumber)
 
 		if lowestNumber < closestLocation {
 			closestLocation = lowestNumber
@@ -67,74 +63,75 @@ func checkBranch(numberRange []int, mapIndex int) {
 	checkRow(numberRange, mapIndex, 0)
 }
 
-// Check one row at a time
+// Check one row in a map at a time
 func checkRow(numberRange []int, mapI, rowI int) {
 	mapRows := maps[mapI]
 
 	if rowI == len(mapRows) {
-		// fmt.Printf("End of the line, checking branch: %d\n", numberRange[0])
+		// We've reached past the last row, with no match for the range.
+		// Pass the range to the next map.
 		checkBranch(numberRange, mapI+1)
 		return
 	}
 
 	row := mapRows[rowI]
+
 	rangeBaseNumber := numberRange[0]
 	rangeCeilingNumber := rangeBaseNumber + numberRange[1]
 
 	rowSourceStart := row[1]
 	rowSourceEnd := rowSourceStart + row[2]
 	rowDestinationStart := row[0]
-	// fmt.Printf("Row: %d\n", rowI)
 
+	// <> = range area, || = source area, . = 0 or more numbers
+	// Case covered |.<.>.| and |.<.|.>
 	if rangeBaseNumber >= rowSourceStart && rangeBaseNumber < rowSourceEnd {
-		// fmt.Printf("1 m%d\n", mapI)
-		// fmt.Printf("diff: %d\n", rangeBaseNumber-rowSourceStart)
 		diffRangeRow := rangeBaseNumber - rowSourceStart
 		destinationStart := rowDestinationStart + diffRangeRow
 		var destinationEnd int
 
-		// if rangeCeilingNumber >= rowSourceEnd {
 		if rangeCeilingNumber > rowSourceEnd {
 			newRangeLength := rangeCeilingNumber - rowSourceEnd
+			// Pass the sub range that doesn't match on to the next row
 			checkRow([]int{rowSourceEnd, newRangeLength}, mapI, rowI+1)
 			destinationEnd = rowSourceEnd - rangeBaseNumber
 		} else {
 			destinationEnd = numberRange[1]
 		}
 
+		// Pass the sub range that matches on to the next map
 		checkBranch([]int{destinationStart, destinationEnd}, mapI+1)
+		// Case covered <.|.>.|
 	} else if rangeCeilingNumber > rowSourceStart && rangeCeilingNumber <= rowSourceEnd {
-		// fmt.Printf("2 m%d\n", mapI)
-		// fmt.Printf("diff: %d\n", rangeCeilingNumber-rowSourceStart)
 		matchingRangeLength := rangeCeilingNumber - rowSourceStart
+		// Pass the sub range that matches on to the next map
 		checkBranch([]int{rowDestinationStart, matchingRangeLength}, mapI+1)
 
 		newRangeLength := numberRange[1] - matchingRangeLength
+		// Pass the sub range that doesn't match on to the next row
 		checkRow([]int{rangeBaseNumber, newRangeLength}, mapI, rowI+1)
+		// Case covered <.|.|.>
 	} else if rangeCeilingNumber >= rowSourceEnd && rangeBaseNumber < rowSourceStart {
-		// fmt.Printf("3 m%d\n", mapI)
-		// fmt.Printf("diff down: %d\n", rowSourceStart-rangeBaseNumber)
-		// fmt.Printf("diff up: %d\n", rangeCeilingNumber-rowSourceEnd)
+		// Pass the sub range that matches on to the next map
 		checkBranch([]int{rowDestinationStart, row[2]}, mapI+1)
+		// Pass the first sub range that doesn't match on to the next row
 		checkRow([]int{rowSourceEnd, rangeCeilingNumber - rowSourceEnd}, mapI, rowI+1)
+		// Pass the second sub range that doesn't match on to the next row
 		checkRow([]int{rangeBaseNumber, rowSourceStart - rangeBaseNumber}, mapI, rowI+1)
+		// Nothing matches
 	} else {
-		// fmt.Printf("4 m%d\n", mapI)
+		// Pass the sub range that doesn't match on to the next row
 		checkRow(numberRange, mapI, rowI+1)
 	}
 }
 
-var seeds = [][]int{}
-var maps = [][][]int{}
-
+// Parse a map from the input, and store it in the maps array
 func parseMap(scanner *bufio.Scanner, currentMap [][]int) {
-	// First line is title in iteration 1, we don't care about it
 	scanner.Scan()
 	content := scanner.Text()
 
 	if content == "" {
 		maps = append(maps, currentMap)
-		// // fmt.Printf("New map: %#v\n", currentMap)
 		return
 	}
 
@@ -154,8 +151,6 @@ func parseSeeds(scanner *bufio.Scanner) {
 	for i := 0; i < len(seedNumbers); i += 2 {
 		seeds = append(seeds, []int{seedNumbers[i], seedNumbers[i+1]})
 	}
-
-	// // fmt.Printf("Seeds: %#v\n", seeds)
 
 	scanner.Scan()
 }
