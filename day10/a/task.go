@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"log"
 	"os"
 	"regexp"
@@ -14,6 +13,7 @@ type coordinate struct {
 	direction rune
 }
 
+var startRegex = regexp.MustCompile("S")
 var loop = [][]rune{}
 var startCoordinate coordinate
 
@@ -115,14 +115,29 @@ func main() {
 }
 
 func getSteps() int {
-	return move(0, startCoordinate.x+1, startCoordinate.y, 'R')
+	x, y := startCoordinate.x, startCoordinate.y
+	var direction rune
+
+	if pipes[loop[y][x+1]]['R'].direction != 0 {
+		x++
+		direction = 'R'
+	} else if pipes[loop[y][x-1]]['L'].direction != 0 {
+		x--
+		direction = 'L'
+	} else if pipes[loop[y+1][x]]['D'].direction != 0 {
+		y++
+		direction = 'D'
+	} else if pipes[loop[y-1][x]]['U'].direction != 0 {
+		y--
+		direction = 'U'
+	}
+
+	return move(0, x, y, direction)
 }
 
 func move(totalSteps int, x int, y int, direction rune) int {
 	totalSteps++
 	currentShape := loop[y][x]
-	readableRune := string(string(currentShape))
-	fmt.Printf("Rune: %v, dir: %v\n", readableRune, string(direction))
 
 	if currentShape == 'S' {
 		return totalSteps / 2
@@ -131,8 +146,6 @@ func move(totalSteps int, x int, y int, direction rune) int {
 	currentPipe := pipes[currentShape][direction]
 	return move(totalSteps, x+currentPipe.x, y+currentPipe.y, currentPipe.direction)
 }
-
-var startRegex = regexp.MustCompile("S")
 
 func scanText(file *os.File) {
 	scanner := bufio.NewScanner(file)
